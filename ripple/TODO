@@ -4,3 +4,4 @@
 * Tilt control speed of ripple
 * Make ripple non square
 * Multi origins possible if one corner button is reserved to use as modifier
+* Distance from origin is the velocity of note
