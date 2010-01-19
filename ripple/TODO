@@ -1,0 +1,6 @@
+* Origin button press duration = speed of ripple
+* Stone button press duration = duration of note length
+* Proper scale setup
+* Tilt control speed of ripple
+* Make ripple non square
+* Multi origins possible if one corner button is reserved to use as modifier

@@ -1,1 +1,12 @@
-A Ripple sequencer for the monome written in Ruby using the monomer library
+Ripple v.1
+==========
+
+A Ripple sequencer for the monome [64] written in Ruby using the monomer library
+
+Directions:
+1. Press a button.  This is your origin.  The Ripple will spread from this point.
+2. Press other buttons.  These are your stones.  When the Ripple hits a stone, a note is played.
+
+There ya go.
+
+You can turn off/on stones.  If you turn off the origin, the playback stops. You can now pick a new origin.  You can use a pre-existing stone for the new origin.  
