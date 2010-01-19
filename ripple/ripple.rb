@@ -19,10 +19,16 @@ class Ripple < Monomer::Listener
   end
   
   on_button_press do |x,y|
-    unless @origin.nil? or (@origin[:x] == x && @origin[:y] == y)
-      @buttons_on.push({:x => x, :y => y})
-    else
-      @origin = {:x => x, :y => y}
+    button = {:x => x, :y => y}
+    
+    if @origin.nil?
+      @origin = button
+    elsif @origin == button
+      extinguish_origin
+    elsif @buttons_on.include?(button)
+      @buttons_on.delete(button)
+    else  
+      @buttons_on.push(button)
     end    
   end
   
@@ -31,7 +37,7 @@ class Ripple < Monomer::Listener
       unless (@current_step == @max_steps) || @origin.nil?
         monome.clear
         light_origin
-        light_others        
+        toggle_others        
         light_square(@current_step)  
         check_for_hit
         @current_step += 1
@@ -42,19 +48,27 @@ class Ripple < Monomer::Listener
   end
   
   def self.check_for_hit
-    @buttons_on.each do |button|  
+    @buttons_on.each do |button|
       if @lights_on.include?(button)
-        @midi.prepare_note(:duration => 0.4 * (60 / 120.0 / 4), :note => button[:x] * 8 + button[:y])
+        @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)
       end
     end
-          
   end
-  
+
   def self.light_origin
+    monome.led_on( @origin[:x], @origin[:y])    
+  end
+
+  def self.extinguish_origin
+    monome.led_off( @origin[:x], @origin[:y])
+    @origin = nil        
+  end  
+  
+  def self.toggle_origin
     monome.toggle_led( @origin[:x], @origin[:y])    
   end
   
-  def self.light_others
+  def self.toggle_others
     for button in @buttons_on do
       monome.toggle_led( button[:x], button[:y])
     end    
@@ -88,7 +102,7 @@ class Ripple < Monomer::Listener
     else
       for y in starting[:y]..ending[:y] do 
         monome.led_on( starting[:x], y )
-        @lights_on.push( {starting[:x], y} )        
+        @lights_on.push( {:x => starting[:x], :y => y} )        
       end  
     end 
   end
