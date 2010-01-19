@@ -1,0 +1,4 @@
+A suite of Monome apps written in Ruby using the Monomer library
+
+The suite currently consists of:
+Ripple - A Ripple sequencer 
