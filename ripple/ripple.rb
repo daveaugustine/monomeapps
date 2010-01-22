@@ -10,7 +10,7 @@ class Ripple < Monomer::Listener
     @origin = nil
     @lights_on = []    
     @max_steps = 8
-    @current_step = 0
+    @radius = 0
     @play_debug = true    
   end
 
@@ -20,7 +20,6 @@ class Ripple < Monomer::Listener
   
   on_button_press do |x,y|
     button = {:x => x, :y => y}
-    
     if @origin.nil?
       @origin = button
       if @buttons_on.include? button
@@ -28,6 +27,8 @@ class Ripple < Monomer::Listener
       end
     elsif @origin == button
       extinguish_origin
+      monome.clear
+      light_others
     elsif @buttons_on.include?(button)
       @buttons_on.delete(button)
     else  
@@ -36,34 +37,39 @@ class Ripple < Monomer::Listener
   end
   
   def self.play_notes 
-      
-      unless (@current_step == @max_steps) || @origin.nil?
+      unless (@radius == @max_steps) || @origin.nil?
         monome.clear
         light_origin
         light_others        
-        light_square(@current_step)  
+        #light_square(@radius)  
+        light_circle @radius
         check_for_hit
-        @current_step += 1
+        @radius += 1
       else
-        @current_step = 0
+        @radius = 0
       end  
-
   end
   
   def self.check_for_hit
     @buttons_on.each do |button|
-      if @lights_on.include?(button)
-        @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)
+      if distance(@origin, button) == @radius
+        @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)  
       end
+      # if @lights_on.include?(button)
+      #         @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)
+      #       end
     end
   end
-
+  
+  def self.distance(p1, p2)
+    Math.sqrt( ((p2[:x] - p1[:x])**2)  + ((p2[:y] - p1[:y])**2) ).floor
+  end   
+  
   def self.light_origin
     monome.led_on( @origin[:x], @origin[:y])    
   end
 
   def self.extinguish_origin
-    monome.led_off( @origin[:x], @origin[:y])
     @origin = nil        
   end  
   
@@ -76,7 +82,13 @@ class Ripple < Monomer::Listener
       monome.led_on( button[:x], button[:y])
     end    
   end
-   
+  
+  def self.light_circle(radius)
+    unless radius == 0
+      circle @origin, radius
+    end
+  end
+  
   def self.light_square(size)
     @lights_on = []
         
@@ -86,13 +98,44 @@ class Ripple < Monomer::Listener
       lower_left    = { :x => @origin[:x] - size, :y => @origin[:y] + size  }    
       lower_right   = { :x => @origin[:x] + size, :y => @origin[:y] + size  }    
   
-      light_line( upper_left  , upper_right )
-      light_line( upper_right , lower_right )
-      light_line( lower_left  , lower_right )
-      light_line( upper_left  , lower_left  )
+      line( upper_left  , upper_right )
+      line( upper_right , lower_right )
+      line( lower_left  , lower_right )
+      line( upper_left  , lower_left  )
     end  
   end
+  
+  
+  def self.circle(p1, radius)    
+    r2 = radius * radius
+    x = -radius
+    while x <= radius
+      y = (Math.sqrt(r2 - x*x) + 0.5).floor
+      monome.led_on(p1[:x] + x, p1[:y] + y)      
+      monome.led_on(p1[:x] + x, p1[:y] - y)      
+      x += 1
+    end
+  end
 
+  def self.line(p1, p2)
+    x = p1[:x]
+    y = p1[:y]
+    delta_x = (p2[:x] - p1[:x])    
+    delta_y = p2[:y] - p1[:y]
+    d = (2 * delta_y) - delta_x
+    
+    for j in p1[:x]..p2[:x] do
+      monome.led_on(x, y)
+      if d < 0
+        d = d + (2 * delta_y)
+      else 
+        d = d + 2 * (delta_y - delta_x)
+        y = y + 1
+      end
+      x = x + 1
+    end
+  end
+  
   def self.light_line( starting, ending )
     max_x = ( starting[:x] - ending[:x] ).abs    
     max_y = ( starting[:y] - ending[:y] ).abs
@@ -100,12 +143,10 @@ class Ripple < Monomer::Listener
     if (max_x > max_y)
       for x in starting[:x]..ending[:x] do
         monome.led_on( x, ending[:y] )
-        @lights_on.push( {:x => x, :y => ending[:y]} )
       end
     else
       for y in starting[:y]..ending[:y] do 
         monome.led_on( starting[:x], y )
-        @lights_on.push( {:x => starting[:x], :y => y} )        
       end  
     end 
   end
