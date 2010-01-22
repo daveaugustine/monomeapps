@@ -9,8 +9,9 @@ class Ripple < Monomer::Listener
     @buttons_on = []
     @origin = nil
     @lights_on = []    
-    @max_steps = 8
+    @max_steps = 16
     @radius = 0
+    @lengths = Hash.new
     @play_debug = true    
   end
 
@@ -20,10 +21,13 @@ class Ripple < Monomer::Listener
   
   on_button_press do |x,y|
     button = {:x => x, :y => y}
+    @lengths[button] = 0
+    
     if @origin.nil?
       @origin = button
       if @buttons_on.include? button
         @buttons_on.delete(button)
+        @lengths.delete(button)
       end
     elsif @origin == button
       extinguish_origin
@@ -31,12 +35,25 @@ class Ripple < Monomer::Listener
       light_others
     elsif @buttons_on.include?(button)
       @buttons_on.delete(button)
+      @lengths[button] = 0
     else  
       @buttons_on.push(button)
     end    
   end
   
-  def self.play_notes 
+  on_button_release do |x,y|
+    #puts 'release'
+    #@lengths[{:x => x, :y => y}]
+  end
+  
+  loop_on_button_sustain(:any, :any) do |x,y|
+    sleep 0.1
+    @lengths[{:x => x,:y => y}] += 0.1
+  end
+  
+  def self.play_notes
+    
+     
       unless (@radius == @max_steps) || @origin.nil?
         monome.clear
         light_origin
@@ -52,8 +69,10 @@ class Ripple < Monomer::Listener
   
   def self.check_for_hit
     @buttons_on.each do |button|
+      puts "button: #{button[:x]},#{button[:y]}"      
+      puts "distance: #{distance(@origin, button)}"
       if distance(@origin, button) == @radius
-        @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)  
+        @midi.prepare_note(:duration => (@lengths[button]+0.1) * 2, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)  
       end
       # if @lights_on.include?(button)
       #         @midi.prepare_note(:duration => 0.5, :note => ((button[:x] + 1) * (button[:y] + 1)) + 40)
@@ -62,7 +81,7 @@ class Ripple < Monomer::Listener
   end
   
   def self.distance(p1, p2)
-    Math.sqrt( ((p2[:x] - p1[:x])**2)  + ((p2[:y] - p1[:y])**2) ).floor
+    Math.sqrt( ((p2[:x] - p1[:x])**2)  + ((p2[:y] - p1[:y])**2) ).round
   end   
   
   def self.light_origin
@@ -106,16 +125,16 @@ class Ripple < Monomer::Listener
   end
   
   
-  def self.circle(p1, radius)    
-    r2 = radius * radius
-    x = -radius
-    while x <= radius
-      y = (Math.sqrt(r2 - x*x) + 0.5).floor
-      monome.led_on(p1[:x] + x, p1[:y] + y)      
-      monome.led_on(p1[:x] + x, p1[:y] - y)      
-      x += 1
-    end
-  end
+  # def self.circle(p1, radius)    
+  #   r2 = radius * radius
+  #   x = -radius
+  #   while x <= radius
+  #     y = (Math.sqrt(r2 - x*x) + 0.5).round
+  #     monome.led_on(p1[:x] + x, p1[:y] + y)      
+  #     monome.led_on(p1[:x] + x, p1[:y] - y)      
+  #     x += 1
+  #   end
+  # end
 
   def self.line(p1, p2)
     x = p1[:x]
@@ -151,6 +170,46 @@ class Ripple < Monomer::Listener
     end 
   end
   
+  def self.circlePoints(cx, cy, x, y)
+        if (x == 0) 
+            monome.led_on(cx, cy + y)
+            monome.led_on(cx, cy - y)
+            monome.led_on(cx + y, cy)
+            monome.led_on(cx - y, cy)
+        elsif (x == y)
+            monome.led_on(cx + x, cy + y)
+            monome.led_on(cx - x, cy + y)
+            monome.led_on(cx + x, cy - y)
+            monome.led_on(cx - x, cy - y)
+        elsif (x < y)                    
+            monome.led_on(cx + x, cy + y)
+            monome.led_on(cx - x, cy + y)
+            monome.led_on(cx + x, cy - y)
+            monome.led_on(cx - x, cy - y)
+            monome.led_on(cx + y, cy + x)
+            monome.led_on(cx - y, cy + x)
+            monome.led_on(cx + y, cy - x)
+            monome.led_on(cx - y, cy - x)
+        end
+    end
+
+    def self.circle(origin, radius)
+        x = 0
+        y = radius
+        p = (5 - radius*4)/4
+
+        circlePoints(origin[:x], origin[:y], x, y)
+        while (x < y)
+            x += 1
+            if (p < 0)
+                p += 2*x+1
+            else
+                y -= 1
+                p += 2*(x-y)+1
+            end
+            circlePoints(origin[:x], origin[:y], x, y)
+        end
+    end
 end
 
 Monomer::Monome.create.with_listeners(Ripple).start  if $0 == __FILE__
